@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Create New Quote</h2>
+    
+    <form method="POST" class="needs-validation" novalidate>
+        <!-- Client Information -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Client Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="client_name">Client Name</label>
+                        <input type="text" class="form-control" id="client_name" name="client_name" required>
+                        <div class="invalid-feedback">Please enter the client name.</div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="start_date">Start Date</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" required>
+                        <div class="invalid-feedback">Please select a start date.</div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="end_date">End Date</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" required>
+                        <div class="invalid-feedback">Please select an end date.</div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="group_size">Group Size</label>
+                        <input type="number" class="form-control" id="group_size" name="group_size" min="1" required>
+                        <div class="invalid-feedback">Please enter the group size.</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="margin_percentage">Margin (%)</label>
+                        <input type="number" class="form-control" id="margin_percentage" name="margin_percentage" step="0.1" min="0" required>
+                        <div class="invalid-feedback">Please enter the margin percentage.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activities -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Activities</h5>
+                <button type="button" class="btn btn-primary btn-sm" id="addActivity">Add Activity</button>
+            </div>
+            <div class="card-body">
+                <div id="activitiesContainer">
+                    <!-- Activities will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Create Quote</button>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // Add activity button
+    const addActivityBtn = document.getElementById('addActivity');
+    let activityCount = 0;
+    
+    addActivityBtn.addEventListener('click', function() {
+        const container = document.getElementById('activitiesContainer');
+        const activityDiv = document.createElement('div');
+        activityDiv.className = 'row mb-3';
+        activityDiv.innerHTML = `
+            <div class="col-md-4">
+                <label for="activity_name_${activityCount}">Activity Name</label>
+                <input type="text" class="form-control" id="activity_name_${activityCount}" name="activity_name_${activityCount}" required>
+            </div>
+            <div class="col-md-4">
+                <label for="activity_description_${activityCount}">Description</label>
+                <input type="text" class="form-control" id="activity_description_${activityCount}" name="activity_description_${activityCount}">
+            </div>
+            <div class="col-md-2">
+                <label for="activity_cost_${activityCount}">Cost</label>
+                <input type="number" class="form-control" id="activity_cost_${activityCount}" name="activity_cost_${activityCount}" step="0.01" min="0" required>
+            </div>
+            <div class="col-md-1">
+                <label for="activity_duration_${activityCount}">Duration</label>
+                <input type="number" class="form-control" id="activity_duration_${activityCount}" name="activity_duration_${activityCount}" min="0" required>
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-danger btn-sm mt-4" onclick="removeActivity(this)">Remove</button>
+            </div>
+        `;
+        container.appendChild(activityDiv);
+        activityCount++;
+    });
+
+    // Add initial activity
+    addActivityBtn.click();
+});
+
+function removeActivity(button) {
+    button.closest('.row').remove();
+}
+</script>
+{% endblock %}

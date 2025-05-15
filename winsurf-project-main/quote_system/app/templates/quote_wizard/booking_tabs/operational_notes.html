@@ -1,0 +1,40 @@
+<div>
+    <h5>Operational Notes</h5>
+    
+    <!-- Add Note Form -->
+    <div class="card mb-3">
+        <div class="card-header">
+            Add New Note
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('quote_wizard.add_operational_note', quote_id=quote.id) }}">
+                <div class="mb-3">
+                    <label for="note" class="form-label">Note</label>
+                    <textarea class="form-control" id="note" name="note" rows="4" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Note</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notes List -->
+    <ul class="list-group mb-3">
+        {% for note in quote.operational_notes %}
+        <li class="list-group-item d-flex justify-content-between align-items-start">
+            <div>
+                <span class="fw-bold">{{ note.created_at.strftime('%Y-%m-%d') }}</span>:
+                {{ note.note }}
+            </div>
+            <div>
+                <form method="POST" action="{{ url_for('quote_wizard.delete_operational_note', quote_id=quote.id, note_id=note.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this note?')">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                </form>
+            </div>
+        </li>
+        {% else %}
+        <li class="list-group-item text-muted">No operational notes yet.</li>
+        {% endfor %}
+    </ul>
+</div>
