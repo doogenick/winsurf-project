@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Safari Itinerary - {{ itinerary.client_name }}{% endblock %}
+
+{% block header_content %}Safari Itinerary - {{ itinerary.client_name }}{% endblock %}
+
+{% block document_title %}Detailed Safari Itinerary{% endblock %}
+
+{% block additional_styles %}
+.day-card {
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.day-header {
+    background-color: #f5f5f5;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.day-content {
+    padding: 15px;
+}
+
+.activity {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px dotted #eee;
+}
+
+.activity:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.activity-time {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.activity-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.accommodation-box {
+    background-color: #e8f4f8;
+    border-left: 4px solid #3498db;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.meal-included {
+    display: inline-block;
+    background-color: #e8f8e8;
+    border: 1px solid #2ecc71;
+    color: #27ae60;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9pt;
+    margin-left: 5px;
+}
+
+.meal-excluded {
+    display: inline-block;
+    background-color: #f8e8e8;
+    border: 1px solid #e74c3c;
+    color: #c0392b;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9pt;
+    margin-left: 5px;
+}
+
+.map-image {
+    max-width: 100%;
+    margin: 15px 0;
+    border: 1px solid #ddd;
+}
+
+.itinerary-overview {
+    margin-bottom: 30px;
+}
+
+.overview-map {
+    text-align: center;
+    margin: 20px 0;
+}
+{% endblock %}
+
+{% block content %}
+    <div class="client-info">
+        <h2>Trip Overview</h2>
+        <table>
+            <tr>
+                <td><strong>Client:</strong></td>
+                <td>{{ itinerary.client_name }}</td>
+                <td><strong>Duration:</strong></td>
+                <td>{{ itinerary.total_nights }} nights / {{ itinerary.total_nights + 1 }} days</td>
+            </tr>
+            <tr>
+                <td><strong>Start Date:</strong></td>
+                <td>{{ itinerary.start_date }}</td>
+                <td><strong>End Date:</strong></td>
+                <td>{{ itinerary.end_date }}</td>
+            </tr>
+            <tr>
+                <td><strong>Number of Guests:</strong></td>
+                <td>{{ itinerary.pax }}</td>
+                <td><strong>Tour Type:</strong></td>
+                <td>{{ itinerary.tour_type|default('Custom Safari') }}</td>
+            </tr>
+        </table>
+    </div>
+    
+    {% if itinerary.overview_map_path %}
+    <div class="overview-map">
+        <img src="{{ itinerary.overview_map_path }}" alt="Trip Overview Map" class="map-image">
+    </div>
+    {% endif %}
+    
+    <div class="itinerary-overview">
+        <h2>Accommodations Summary</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Night</th>
+                    <th>Date</th>
+                    <th>Accommodation</th>
+                    <th>Location</th>
+                    <th>Room Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for accommodation in itinerary.accommodations %}
+                <tr>
+                    <td>{{ accommodation.night }}</td>
+                    <td>{{ accommodation.date }}</td>
+                    <td>{{ accommodation.name }}</td>
+                    <td>{{ accommodation.location }}</td>
+                    <td>{{ accommodation.room_type }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="page-break"></div>
+    
+    <h2>Daily Itinerary</h2>
+    
+    {% for day in itinerary.days %}
+    <div class="day-card no-break">
+        <div class="day-header">
+            <h3>Day {{ day.day_number }}: {{ day.title }}</h3>
+            <div>{{ day.date }}</div>
+        </div>
+        <div class="day-content">
+            {% if day.description %}
+            <p>{{ day.description }}</p>
+            {% endif %}
+            
+            {% for activity in day.activities %}
+            <div class="activity">
+                {% if activity.start_time %}
+                <div class="activity-time">
+                    {{ activity.start_time }}{% if activity.end_time %} - {{ activity.end_time }}{% endif %}
+                </div>
+                {% endif %}
+                
+                <div class="activity-title">
+                    {{ activity.title }}
+                    {% if activity.meal_type == 'breakfast' %}
+                    <span class="meal-included">Breakfast Included</span>
+                    {% elif activity.meal_type == 'lunch' %}
+                    <span class="meal-included">Lunch Included</span>
+                    {% elif activity.meal_type == 'dinner' %}
+                    <span class="meal-included">Dinner Included</span>
+                    {% endif %}
+                    
+                    {% if activity.is_included == false %}
+                    <span class="meal-excluded">Not Included</span>
+                    {% endif %}
+                </div>
+                
+                {% if activity.description %}
+                <p>{{ activity.description }}</p>
+                {% endif %}
+                
+                {% if activity.location %}
+                <p><strong>Location:</strong> {{ activity.location }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+            
+            {% if day.accommodation %}
+            <div class="accommodation-box">
+                <strong>Overnight:</strong> {{ day.accommodation.name }} - {{ day.accommodation.location }}<br>
+                <strong>Room Type:</strong> {{ day.accommodation.room_type }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if not loop.last %}
+    <div class="page-break"></div>
+    {% endif %}
+    {% endfor %}
+    
+    <div class="page-break"></div>
+    
+    <div class="no-break">
+        <h2>Inclusions</h2>
+        <ul>
+            {% for inclusion in itinerary.inclusions %}
+            <li>{{ inclusion }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    <div class="no-break">
+        <h2>Exclusions</h2>
+        <ul>
+            {% for exclusion in itinerary.exclusions %}
+            <li>{{ exclusion }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    {% if itinerary.special_notes %}
+    <div class="notes no-break">
+        <h2>Special Notes</h2>
+        <p>{{ itinerary.special_notes }}</p>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block footer %}
+<p>u00a9 {{ now().year }} Safari Quote System. All rights reserved.</p>
+<p>This itinerary is confidential and intended solely for the use of the individual or entity to whom it is addressed.</p>
+{% endblock %}

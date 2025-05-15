@@ -2,6 +2,7 @@ from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
+from .mock_auth import mock_login_required as login_required
 from config import Config
 
 # Initialize extensions

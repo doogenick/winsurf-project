@@ -103,6 +103,5 @@ def delete_operational_note(quote_id, note_id):
     db.session.commit()
     flash('Operational note deleted.', 'success')
     return redirect(url_for('quote_wizard.booking_detail', quote_id=quote_id) + '#ops')
-                           itinerary_days=itinerary_days)
 
 

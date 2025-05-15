@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Safari Quote - {{ quote.reference_number }}{% endblock %}
+
+{% block header_content %}Safari Quote - {{ quote.reference_number }}{% endblock %}
+
+{% block document_title %}Safari Tour Quote{% endblock %}
+
+{% block additional_styles %}
+.pricing-breakdown {
+    margin-top: 20px;
+}
+
+.pricing-breakdown table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.pricing-breakdown th {
+    background-color: #f5f5f5;
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+.pricing-breakdown td {
+    padding: 8px;
+    border: 1px solid #ddd;
+}
+
+.pricing-breakdown .total {
+    font-weight: bold;
+    background-color: #f9f9f9;
+}
+
+.pricing-notes {
+    font-size: 10pt;
+    font-style: italic;
+    color: #666;
+    margin-top: 5px;
+}
+
+.quote-summary {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.quote-summary-left, .quote-summary-right {
+    width: 48%;
+}
+
+.quote-validity {
+    background-color: #fffde7;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 15px 0;
+    font-weight: bold;
+}
+
+.seasonal-note {
+    font-style: italic;
+    color: #d35400;
+    margin-top: 10px;
+}
+{% endblock %}
+
+{% block content %}
+    <div class="client-info">
+        <h2>Client Information</h2>
+        <table>
+            <tr>
+                <td><strong>Client Name:</strong></td>
+                <td>{{ quote.client_name }}</td>
+                <td><strong>Quote Reference:</strong></td>
+                <td>{{ quote.reference_number }}</td>
+            </tr>
+            <tr>
+                <td><strong>Email:</strong></td>
+                <td>{{ quote.client_email }}</td>
+                <td><strong>Quote Date:</strong></td>
+                <td>{{ quote.created_at|default(generation_date) }}</td>
+            </tr>
+            <tr>
+                <td><strong>Phone:</strong></td>
+                <td>{{ quote.client_phone }}</td>
+                <td><strong>Prepared By:</strong></td>
+                <td>{{ quote.created_by_name }}</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="quote-summary">
+        <div class="quote-summary-left">
+            <h2>Tour Details</h2>
+            <table>
+                <tr>
+                    <td><strong>Tour Name:</strong></td>
+                    <td>{{ quote.tour_name }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Start Date:</strong></td>
+                    <td>{{ quote.start_date }}</td>
+                </tr>
+                <tr>
+                    <td><strong>End Date:</strong></td>
+                    <td>{{ quote.end_date }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Duration:</strong></td>
+                    <td>{{ quote.duration }} days</td>
+                </tr>
+                <tr>
+                    <td><strong>Number of Guests:</strong></td>
+                    <td>{{ quote.pax }}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="quote-summary-right">
+            <h2>Price Summary</h2>
+            <table>
+                <tr>
+                    <td><strong>Total Cost:</strong></td>
+                    <td class="text-right">${{ '%0.2f'|format(quote.total_cost) }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Cost Per Person:</strong></td>
+                    <td class="text-right">${{ '%0.2f'|format(quote.per_person_cost) }}</td>
+                </tr>
+                {% if quote.discount_amount and quote.discount_amount > 0 %}
+                <tr>
+                    <td><strong>Group Discount Applied:</strong></td>
+                    <td class="text-right">${{ '%0.2f'|format(quote.discount_amount) }}</td>
+                </tr>
+                {% endif %}
+                {% if quote.seasonal_markup and quote.seasonal_markup != 1.0 %}
+                <tr>
+                    <td><strong>Seasonal Rate:</strong></td>
+                    <td class="text-right">{{ (quote.seasonal_markup * 100 - 100)|abs }}% {% if quote.seasonal_markup > 1 %}Increase{% else %}Decrease{% endif %}</td>
+                </tr>
+                {% endif %}
+            </table>
+            
+            {% if quote.seasonal_markup and quote.seasonal_markup != 1.0 %}
+            <div class="seasonal-note">
+                Note: This quote includes {{ 'high' if quote.seasonal_markup > 1 else 'low' }} season pricing.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="quote-validity">
+        This quote is valid until: {{ quote.valid_until }}
+    </div>
+    
+    <div class="pricing-breakdown no-break">
+        <h2>Pricing Breakdown</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Description</th>
+                    <th class="text-right">Quantity</th>
+                    <th class="text-right">Unit Price</th>
+                    <th class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in quote.cost_breakdown %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.description }}</td>
+                    <td class="text-right">{{ item.quantity }}</td>
+                    <td class="text-right">${{ '%0.2f'|format(item.unit_price) }}</td>
+                    <td class="text-right">${{ '%0.2f'|format(item.total) }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="total">
+                    <td colspan="4" class="text-right"><strong>Total:</strong></td>
+                    <td class="text-right">${{ '%0.2f'|format(quote.total_cost) }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="pricing-notes">
+            * All prices are in USD unless otherwise specified.
+        </div>
+    </div>
+    
+    <div class="page-break"></div>
+    
+    <div class="no-break">
+        <h2>Inclusions</h2>
+        <ul>
+            {% for inclusion in quote.inclusions %}
+            <li>{{ inclusion }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    <div class="no-break">
+        <h2>Exclusions</h2>
+        <ul>
+            {% for exclusion in quote.exclusions %}
+            <li>{{ exclusion }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    {% if quote.special_notes %}
+    <div class="notes no-break">
+        <h2>Special Notes</h2>
+        <p>{{ quote.special_notes }}</p>
+    </div>
+    {% endif %}
+    
+    <div class="no-break">
+        <h2>Terms and Conditions</h2>
+        <ol>
+            <li>A non-refundable deposit of 30% is required to confirm the booking.</li>
+            <li>Full payment is due 60 days prior to departure.</li>
+            <li>Cancellation policy: 
+                <ul>
+                    <li>60+ days before departure: Loss of deposit</li>
+                    <li>30-59 days: 50% of total cost</li>
+                    <li>0-29 days: 100% of total cost</li>
+                </ul>
+            </li>
+            <li>We strongly recommend comprehensive travel insurance.</li>
+            <li>Prices are subject to change due to currency fluctuations or unforeseen circumstances.</li>
+        </ol>
+    </div>
+{% endblock %}
+
+{% block footer %}
+<p>u00a9 {{ now().year }} Safari Quote System. All rights reserved.</p>
+<p>This quote is confidential and intended solely for the use of the individual or entity to whom it is addressed.</p>
+{% endblock %}

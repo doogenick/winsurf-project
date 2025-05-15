@@ -1,3 +1,6 @@
+from sqlalchemy import Column, Integer, String, Float, DateTime, Date, ForeignKey, JSON, Boolean
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Enum
@@ -5,7 +8,21 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 import enum
 import json
+from typing import Dict, List, Optional
 
+# Import versioning extension
+try:
+    from sqlalchemy_continuum import make_versioned
+    make_versioned(user_cls=None)
+    HAS_VERSIONING = True
+except ImportError:
+    HAS_VERSIONING = False
+    print("Warning: sqlalchemy_continuum not installed, versioning disabled")
+
+# Create a base class for standalone SQLAlchemy usage (for tests)
+Base = declarative_base()
+
+# Create Flask-SQLAlchemy instance for the application
 db = SQLAlchemy()
 
 class User(UserMixin, db.Model):
@@ -49,6 +66,28 @@ class Quote(db.Model):
     description = db.Column(db.Text)
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
+    
+    # Excel-like relationships
+    activities = db.relationship('Activity', backref='quote', lazy=True)
+    supplier_bookings = db.relationship('SupplierBooking', backref='quote', lazy=True)
+    documents = db.relationship('Document', backref='quote', lazy=True)
+    
+    # Excel-like cost breakdown
+    cost_breakdown = db.Column(db.JSON)  # Store Excel-like cost calculations
+    notes = db.Column(db.Text)  # For Excel-like comments
+    
+    # Versioning
+    version = db.Column(db.Integer, default=1)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Audit trail
+    audit_logs = db.relationship('QuoteAuditLog', backref='quote', lazy=True)
+    
+    def update_cost_breakdown(self, breakdown: Dict):
+        """Update cost breakdown with Excel-like calculations."""
+        self.cost_breakdown = breakdown
+        db.session.commit()
     quoted_passenger_min = db.Column(db.Integer, nullable=True)  # Minimum quoted group size
     quoted_passenger_max = db.Column(db.Integer, nullable=True)  # Maximum quoted group size (if range)
     booking_type = db.Column(db.String(10), nullable=True)  # 'FIT' or 'GROUP'
@@ -129,9 +168,15 @@ class Supplier(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     contact_person = db.Column(db.String(100))
+    contact_email = db.Column(db.String(120))  # Added for test compatibility
     email = db.Column(db.String(120))
     phone = db.Column(db.String(20))
     activities = db.relationship('Activity', backref='supplier', lazy=True)
+    rates = db.relationship('SupplierRate', backref='supplier', lazy=True, cascade='all, delete-orphan')
+    
+    # Enable versioning if available
+    if HAS_VERSIONING:
+        __versioned__ = {}
 
 # Association table for many-to-many relationship between Quote and Supplier
 quote_suppliers = db.Table('quote_suppliers',
@@ -229,7 +274,6 @@ class ItineraryDay(db.Model):
     description = db.Column(db.Text)
     quote_id = db.Column(db.Integer, db.ForeignKey('quote.id'), nullable=False)
     items = db.relationship('ItineraryItem', backref='day', lazy=True, cascade='all, delete-orphan', order_by='ItineraryItem.start_time')
-    
 class ItineraryItem(db.Model):
     """Item/activity within an itinerary day."""
     id = db.Column(db.Integer, primary_key=True)
@@ -245,3 +289,54 @@ class ItineraryItem(db.Model):
     supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id'))
     activities = db.relationship('Activity', backref='itinerary_item', lazy=True)
 
+
+class SupplierRate(db.Model):
+    """Supplier rates with seasonal variations."""
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id'), nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    season = db.Column(db.String(20))  # high, low, shoulder
+    cost = db.Column(db.Float, nullable=False)
+    room_type = db.Column(db.String(50))  # Optional, for accommodation suppliers
+    is_active = db.Column(db.Boolean, default=True)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Enable versioning if available
+    if HAS_VERSIONING:
+        __versioned__ = {}
+        
+    def is_applicable_on(self, date):
+        """Check if rate applies to a given date."""
+        return self.start_date <= date <= self.end_date and self.is_active
+
+
+class Document(db.Model):
+    """Document associated with a quote (PDF, invoice, etc)."""
+    id = db.Column(db.Integer, primary_key=True)
+    quote_id = db.Column(db.Integer, db.ForeignKey('quote.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    document_type = db.Column(db.String(50))  # quote, invoice, itinerary, etc.
+    file_path = db.Column(db.String(500))
+    file_name = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    version = db.Column(db.Integer, default=1)
+    is_final = db.Column(db.Boolean, default=False)
+    notes = db.Column(db.Text)
+
+
+class QuoteAuditLog(db.Model):
+    """Audit trail for quote changes."""
+    id = db.Column(db.Integer, primary_key=True)
+    quote_id = db.Column(db.Integer, db.ForeignKey('quote.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    action = db.Column(db.String(50))  # created, updated, status_changed, etc.
+    details = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    data_before = db.Column(db.JSON)
+    data_after = db.Column(db.JSON)
+    
+    user = db.relationship('User', backref='audit_logs')

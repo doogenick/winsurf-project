@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}Safari Quote System{% endblock %}</title>
+    <style>
+        @page {
+            margin: 1cm;
+            @top-center {
+                content: "{% block header_content %}Safari Quote System{% endblock %}";
+                font-size: 9pt;
+                color: #888;
+            }
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 9pt;
+            }
+            @bottom-left {
+                content: "Generated on {{ generation_date }}";
+                font-size: 9pt;
+                color: #888;
+            }
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        
+        .logo {
+            max-width: 200px;
+            margin-bottom: 10px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            font-size: 24pt;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            color: #2c3e50;
+            font-size: 18pt;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        
+        h3 {
+            color: #2c3e50;
+            font-size: 14pt;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        
+        .total-row {
+            font-weight: bold;
+            background-color: #f9f9f9;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            font-size: 9pt;
+            color: #777;
+        }
+        
+        .notes {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        
+        .version {
+            font-size: 9pt;
+            color: #999;
+            text-align: right;
+            margin-top: 5px;
+        }
+        
+        .page-break {
+            page-break-after: always;
+        }
+        
+        .no-break {
+            page-break-inside: avoid;
+        }
+        
+        ul, ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .highlight {
+            background-color: #fffde7;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .text-right {
+            text-align: right;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .client-info {
+            margin-bottom: 20px;
+        }
+        
+        .client-info p {
+            margin: 3px 0;
+        }
+        
+        {% block additional_styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="{{ logo_path|default('logo.png') }}" alt="Company Logo" class="logo">
+            <h1>{% block document_title %}Document{% endblock %}</h1>
+            <div class="version">Version {{ version|default(1) }}</div>
+        </div>
+        
+        <div class="content">
+            {% block content %}{% endblock %}
+        </div>
+        
+        <div class="footer">
+            {% block footer %}
+            <p>© {{ now().year }} Safari Quote System. All rights reserved.</p>
+            <p>This document is confidential and intended solely for the use of the individual or entity to whom it is addressed.</p>
+            {% endblock %}
+        </div>
+    </div>
+</body>
+</html>
