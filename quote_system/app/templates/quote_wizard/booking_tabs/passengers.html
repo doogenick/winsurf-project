@@ -1,0 +1,12 @@
+<div>
+    <h5>Passenger List</h5>
+    <ul class="list-group">
+        {% for passenger in quote.passengers %}
+        <li class="list-group-item">
+            {{ passenger.full_name }} ({{ passenger.email or 'No email' }})
+        </li>
+        {% else %}
+        <li class="list-group-item text-muted">No passengers added.</li>
+        {% endfor %}
+    </ul>
+</div>

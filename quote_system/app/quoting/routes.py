@@ -16,38 +16,59 @@ def list_quotes():
 @login_required
 def new_quote():
     if request.method == 'POST':
-        quote_data = request.form
-        
-        # Create quote
-        quote = Quote(
-            quote_number=f'QUOTE-{len(Quote.query.all()) + 1:04}',
-            client_name=quote_data['client_name'],
-            start_date=quote_data['start_date'],
-            end_date=quote_data['end_date'],
-            creator_id=current_user.id
-        )
-        
-        # Create activities
-        activities = []
-        for i in range(int(quote_data['activity_count'])):
-            activity = Activity(
-                name=quote_data[f'activity_name_{i}'],
-                description=quote_data[f'activity_description_{i}'],
-                cost=float(quote_data[f'activity_cost_{i}']),
-                duration=int(quote_data[f'activity_duration_{i}']),
-                quote=quote
+        try:
+            # Validate form data
+            required_fields = ['client_name', 'start_date', 'end_date', 'group_size', 'margin_percentage']
+            for field in required_fields:
+                if not request.form.get(field):
+                    flash(f'Missing required field: {field}', 'error')
+                    return redirect(url_for('quoting.new_quote'))
+
+            # Create quote
+            quote = Quote(
+                quote_number=f'QUOTE-{len(Quote.query.all()) + 1:04}',
+                client_name=request.form['client_name'],
+                start_date=request.form['start_date'],
+                end_date=request.form['end_date'],
+                group_size=int(request.form['group_size']),
+                margin_percentage=float(request.form['margin_percentage']),
+                status='draft',
+                created_by=current_user.id
             )
-            activities.append(activity)
-        
-        # Calculate pricing
-        quote_engine = QuoteEngine()
-        pricing_result = quote_engine.create_quote(
-            activities=activities,
-            start_date=quote.start_date,
-            end_date=quote.end_date,
-            group_size=int(quote_data['group_size']),
-            margin_percentage=float(quote_data['margin_percentage'])
-        )
+
+            # Add activities
+            activity_count = int(request.form.get('activity_count', 0))
+            for i in range(activity_count):
+                activity_data = {
+                    'name': request.form.get(f'activity_name_{i}'),
+                    'description': request.form.get(f'activity_description_{i}'),
+                    'cost': float(request.form.get(f'activity_cost_{i}', 0)),
+                    'duration': int(request.form.get(f'activity_duration_{i}', 0))
+                }
+                
+                if activity_data['name'] and activity_data['cost'] > 0:
+                    activity = Activity(
+                        name=activity_data['name'],
+                        description=activity_data['description'],
+                        cost=activity_data['cost'],
+                        duration=activity_data['duration'],
+                        quote=quote
+                    )
+                    quote.activities.append(activity)
+
+            # Save to database
+            db.session.add(quote)
+            db.session.commit()
+
+            flash('Quote created successfully!', 'success')
+            return redirect(url_for('quoting.view_quote', quote_id=quote.id))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error creating quote: {str(e)}', 'error')
+            return redirect(url_for('quoting.new_quote'))
+
+    return render_template('quoting/new_quote.html')
         
         # Update quote with calculated values
         quote.total_cost = pricing_result['total_cost']

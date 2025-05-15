@@ -1,0 +1,14 @@
+<div>
+    <h5>Operational Notes</h5>
+    <ul class="list-group mb-3">
+        {% for note in quote.operational_notes %}
+        <li class="list-group-item">
+            <span class="fw-bold">{{ note.created_at.strftime('%Y-%m-%d') }}</span>:
+            {{ note.note }}
+        </li>
+        {% else %}
+        <li class="list-group-item text-muted">No operational notes yet.</li>
+        {% endfor %}
+    </ul>
+    <!-- Add note form could be here -->
+</div>

@@ -1,0 +1,84 @@
+{% extends "quote_wizard/wizard_base.html" %}
+
+{% set wizard_title = 'Step 4: Rooming Allocation' %}
+{% set current_step = 'rooming' %}
+
+{% block step_content %}
+<h3 class="form-section-title">Rooming Allocation</h3>
+<p class="text-muted">Assign passengers to rooms. Add rooms, then assign or reassign passengers as needed.</p>
+
+<div class="mb-3">
+    <form method="POST" action="{{ url_for('rooming.add_room', quote_id=quote.id) }}" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <input type="text" name="room_type" class="form-control" placeholder="Room Type (e.g. Double)" required>
+        </div>
+        <div class="col-md-2">
+            <input type="text" name="room_number" class="form-control" placeholder="Room #" required>
+        </div>
+        <div class="col-md-4">
+            <select name="supplier_id" class="form-select">
+                <option value="">Select Supplier (Optional)</option>
+                {% for supplier in suppliers %}
+                    <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-outline-primary">Add Room</button>
+        </div>
+    </form>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <h5>Rooms</h5>
+        {% for room in rooms %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><strong>{{ room.room_type }}</strong> #{{ room.room_number }}</span>
+                <form method="POST" action="{{ url_for('rooming.delete_room', quote_id=quote.id, room_id=room.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </div>
+            <div class="card-body">
+                <ul class="list-group mb-2">
+                    {% for passenger in room.passengers %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ passenger.full_name }}
+                        <form method="POST" action="{{ url_for('rooming.remove_passenger', quote_id=quote.id, room_id=room.id, passenger_id=passenger.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Remove</button>
+                        </form>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-muted">No passengers assigned.</li>
+                    {% endfor %}
+                </ul>
+                <form method="POST" action="{{ url_for('rooming.assign_passenger', quote_id=quote.id, room_id=room.id) }}" class="row g-2">
+                    <div class="col">
+                        <select name="passenger_id" class="form-select">
+                            <option value="">Assign Passenger...</option>
+                            {% for passenger in passengers if not passenger.room_id %}
+                                <option value="{{ passenger.id }}">{{ passenger.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-outline-success btn-sm">Assign</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="col-md-4">
+        <h5>Unassigned Passengers</h5>
+        <ul class="list-group">
+            {% for passenger in passengers if not passenger.room_id %}
+                <li class="list-group-item">{{ passenger.full_name }}</li>
+            {% else %}
+                <li class="list-group-item text-muted">All passengers assigned.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

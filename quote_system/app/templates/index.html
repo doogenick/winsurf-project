@@ -1,0 +1,33 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Welcome to QuoteStreamLINE{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">Welcome to QuoteStreamLINE</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Create New Quote</h5>
+                        <p class="card-text">Start a new quote by providing initial client and trip details.</p>
+                        <a href="{{ url_for('quote_wizard.start_quote') }}" class="btn btn-primary">Create Quote</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Manage Quotes</h5>
+                        <p class="card-text">View, edit, and manage your existing quotes.</p>
+                        <!-- <a href="#" class="btn btn-secondary">View Quotes (coming soon)</a> -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
