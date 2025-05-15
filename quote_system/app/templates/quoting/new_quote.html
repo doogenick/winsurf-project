@@ -1,0 +1,64 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Create New Quote</h2>
+        <form id="quote-form" method="POST">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="client_name" class="form-label">Client Name</label>
+                    <input type="text" class="form-control" id="client_name" name="client_name" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" required>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="group_size" class="form-label">Group Size</label>
+                    <input type="number" class="form-control" id="group_size" name="group_size" min="1" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="margin-slider" class="form-label">Margin (%)</label>
+                    <input type="range" class="form-range" id="margin-slider" name="margin_percentage" min="0" max="50" value="15">
+                    <span id="margin-value">15%</span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Activities</label>
+                <div id="activity-container">
+                    <!-- Activities will be added dynamically -->
+                </div>
+                <input type="hidden" id="activity-count" name="activity_count" value="0">
+                <button type="button" class="btn btn-primary" onclick="addActivityForm()">
+                    <i class="bi bi-plus-lg"></i> Add Activity
+                </button>
+            </div>
+
+            <div class="preview-panel">
+                <h3>Quote Preview</h3>
+                <div id="quote-preview">
+                    <!-- Preview will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-save"></i> Save Quote
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="generatePreview()">
+                    <i class="bi bi-file-earmark-pdf"></i> Preview PDF
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

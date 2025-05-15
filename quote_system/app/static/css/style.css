@@ -1,0 +1,58 @@
+/* Custom styles for QuoteStreamLINE */
+
+/* Form styling */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Activity cards */
+.activity-card {
+    margin-bottom: 1rem;
+    border-left: 4px solid #0d6efd;
+}
+
+/* Margin slider */
+.margin-slider {
+    width: 100%;
+    margin: 1rem 0;
+}
+
+/* Preview panel */
+.preview-panel {
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+/* Responsive table */
+.responsive-table {
+    overflow-x: auto;
+}
+
+/* Itinerary day cards */
+.itinerary-day {
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+}
+
+/* Success message */
+.success-message {
+    background-color: #d1e7dd;
+    color: #0f5132;
+    padding: 1rem;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+/* Error message */
+.error-message {
+    background-color: #f8d7da;
+    color: #842029;
+    padding: 1rem;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
