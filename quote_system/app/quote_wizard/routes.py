@@ -27,6 +27,20 @@ def start_quote():
     db.session.refresh(quote)
     return render_template('quote_wizard/booking_detail.html', quote=quote)
 
+@bp.route('/<int:quote_id>/booking-detail', methods=['GET'])
+@login_required
+def booking_detail(quote_id):
+    """Tabbed booking management view for a quote/booking."""
+    quote = get_quote_or_404(quote_id)
+    if not check_quote_access(quote):
+        return redirect(url_for('quoting.list_quotes'))
+    
+    # Get all suppliers for the supplier bookings form
+    suppliers = Supplier.query.order_by(Supplier.name).all()
+    
+    db.session.refresh(quote)
+    return render_template('quote_wizard/booking_detail.html', quote=quote, suppliers=suppliers)
+
 # --- SUPPLIER BOOKINGS CRUD ---
 @bp.route('/<int:quote_id>/supplier-bookings/add', methods=['POST'])
 @login_required

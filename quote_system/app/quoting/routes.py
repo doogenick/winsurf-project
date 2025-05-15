@@ -88,6 +88,9 @@ def new_quote():
 @login_required
 def view_quote(quote_id):
     quote = Quote.query.get_or_404(quote_id)
+    if quote.status == 'confirmed':
+        # Redirect to booking detail view for confirmed quotes
+        return redirect(url_for('quote_wizard.booking_detail', quote_id=quote_id))
     if quote.creator_id != current_user.id:
         flash('You do not have permission to view this quote.', 'error')
         return redirect(url_for('quoting.list_quotes'))

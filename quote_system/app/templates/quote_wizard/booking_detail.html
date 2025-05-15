@@ -39,3 +39,17 @@
     </div>
 </div>
 {% endblock %}
+{% block scripts %}
+<script>
+    // Add confirmation dialog for delete actions
+    $(document).ready(function() {
+        $('.delete-action').click(function(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to delete this item?')) {
+                $(this).closest('form').submit();
+            }
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}
