@@ -1,0 +1,194 @@
+{% extends "quote_wizard/wizard_base.html" %}
+
+{% set wizard_title = 'Step 3: Passenger Information' %}
+{% set current_step = 'passengers' %}
+
+{% block step_content %}
+<form method="POST" id="passengersForm">
+    {{ form.hidden_tag() }}
+    
+    <div class="form-section">
+        <h3 class="form-section-title">Passengers</h3>
+        <p class="text-muted mb-2">Add all passengers traveling on this itinerary. Passenger information can be completed later if not all details are available now.</p>
+        <div class="mb-3">
+            <strong>Quoted Group Size:</strong>
+            {% if quote.quoted_passenger_max and quote.quoted_passenger_max > quote.quoted_passenger_min %}
+                {{ quote.quoted_passenger_min }}–{{ quote.quoted_passenger_max }}
+            {% else %}
+                {{ quote.quoted_passenger_min }}
+            {% endif %}
+            <span class="ms-3"><strong>Booking Type:</strong> {{ quote.booking_type or 'N/A' }}</span>
+            <span class="ms-3"><strong>Actual Passengers:</strong> {{ quote.passengers|length }}</span>
+        </div>
+        {% if quote.quoted_passenger_min and quote.passengers|length < quote.quoted_passenger_min %}
+            <div class="alert alert-warning">Warning: Fewer passengers booked ({{ quote.passengers|length }}) than minimum quoted ({{ quote.quoted_passenger_min }}).</div>
+        {% elif quote.quoted_passenger_max and quote.passengers|length > quote.quoted_passenger_max %}
+            <div class="alert alert-warning">Warning: More passengers booked ({{ quote.passengers|length }}) than maximum quoted ({{ quote.quoted_passenger_max }}).</div>
+        {% endif %}
+        <div id="passengers-container">
+            {% for passenger_form in form.passengers %}
+            <div class="passenger-entry card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Passenger #{{ loop.index }}</h5>
+                    {% if loop.index > 1 %}
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-passenger">
+                        <i class="bi bi-trash"></i> Remove
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                {{ passenger_form.first_name.label(class="form-label") }}
+                                {{ passenger_form.first_name(class="form-control") }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                {{ passenger_form.last_name.label(class="form-label") }}
+                                {{ passenger_form.last_name(class="form-control") }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                {{ passenger_form.email.label(class="form-label") }}
+                                {{ passenger_form.email(class="form-control") }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                {{ passenger_form.phone.label(class="form-label") }}
+                                {{ passenger_form.phone(class="form-control") }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                {{ passenger_form.date_of_birth.label(class="form-label") }}
+                                {{ passenger_form.date_of_birth(class="form-control", type="date") }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                {{ passenger_form.passport_number.label(class="form-label") }}
+                                {{ passenger_form.passport_number(class="form-control") }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                {{ passenger_form.passport_expiry.label(class="form-label") }}
+                                {{ passenger_form.passport_expiry(class="form-control", type="date") }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                {{ passenger_form.nationality.label(class="form-label") }}
+                                {{ passenger_form.nationality(class="form-control") }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                {{ passenger_form.diet_requirements.label(class="form-label") }}
+                                {{ passenger_form.diet_requirements(class="form-control", rows=2) }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                {{ passenger_form.medical_requirements.label(class="form-label") }}
+                                {{ passenger_form.medical_requirements(class="form-control", rows=2) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="text-center">
+            <button type="button" id="add-passenger-btn" class="btn btn-outline-primary">
+                <i class="bi bi-plus-circle"></i> Add Another Passenger
+            </button>
+        </div>
+    </div>
+    
+    <div class="form-buttons">
+        <button type="submit" name="previous_step" class="btn btn-outline-secondary btn-previous">
+            <i class="bi bi-arrow-left"></i> Previous
+        </button>
+        <button type="submit" name="save_as_draft" class="btn btn-outline-secondary btn-draft">
+            <i class="bi bi-save"></i> Save as Draft
+        </button>
+        <button type="submit" name="save_and_continue" class="btn btn-primary btn-next">
+            Next <i class="bi bi-arrow-right"></i>
+        </button>
+    </div>
+</form>
+{% endblock %}
+
+{% block step_scripts %}
+<script>
+    $(document).ready(function() {
+        // Clone passenger template for adding new passengers
+        const passengerTemplate = $('.passenger-entry').first().clone();
+        
+        // Add passenger button handler
+        $('#add-passenger-btn').click(function() {
+            // Clone the template
+            const newPassenger = passengerTemplate.clone();
+            
+            // Update the title
+            const passengerCount = $('.passenger-entry').length + 1;
+            newPassenger.find('h5').text('Passenger #' + passengerCount);
+            
+            // Clear input values
+            newPassenger.find('input, textarea').val('');
+            
+            // Update form field names and IDs
+            const prefix = 'passengers-' + (passengerCount - 1);
+            newPassenger.find('input, textarea, select').each(function() {
+                const name = $(this).attr('name');
+                if (name) {
+                    const newName = name.replace(/passengers-\d+/, prefix);
+                    $(this).attr('name', newName);
+                }
+                
+                const id = $(this).attr('id');
+                if (id) {
+                    const newId = id.replace(/passengers-\d+/, prefix);
+                    $(this).attr('id', newId);
+                }
+            });
+            
+            // Append to container
+            $('#passengers-container').append(newPassenger);
+            
+            // Make sure the remove button is visible
+            newPassenger.find('.remove-passenger').show();
+        });
+        
+        // Remove passenger handler (using event delegation)
+        $('#passengers-container').on('click', '.remove-passenger', function() {
+            $(this).closest('.passenger-entry').remove();
+            
+            // Renumber passengers
+            $('.passenger-entry').each(function(index) {
+                $(this).find('h5').text('Passenger #' + (index + 1));
+            });
+        });
+        
+        // Hide remove button on first passenger
+        if ($('.passenger-entry').length === 1) {
+            $('.passenger-entry').first().find('.remove-passenger').hide();
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,234 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Voucher - {{ booking.client.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Voucher - {{ booking.client.name }}</h1>
+                <a href="{{ url_for('voucher.download_voucher_pdf', booking_id=booking.id) }}" 
+                   class="btn btn-primary" 
+                   title="Download PDF">
+                    <i class="bi bi-download"></i> Download PDF
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <!-- Header Section -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h3 class="mb-0">VIV200425 Voucher</h3>
+                            <p class="text-muted">Overnight/Rooming List</p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <p class="mb-0">Date: {{ booking.created_at.strftime('%d %b %Y') }}</p>
+                            <p class="mb-0">Booking Ref: {{ booking.id }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Information -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h4>Client Information</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Name:</strong> {{ booking.client.name }}</p>
+                            <p><strong>Email:</strong> {{ booking.client.email }}</p>
+                            <p><strong>Phone:</strong> {{ booking.client.phone }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Address:</strong> {{ booking.client.address }}</p>
+                            <p><strong>City:</strong> {{ booking.client.city }}</p>
+                            <p><strong>Country:</strong> {{ booking.client.country }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Passenger List -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h4>Passenger List</h4>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Passenger Name</th>
+                                    <th>Age</th>
+                                    <th>Room Allocation</th>
+                                    <th>Check-in Date</th>
+                                    <th>Check-out Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for passenger in passengers %}
+                                <tr>
+                                    <td>{{ passenger.name }}</td>
+                                    <td>{{ passenger.age }}</td>
+                                    <td>
+                                        {% for allocation in room_allocations %}
+                                            {% if passenger in allocation.passengers %}
+                                                {{ allocation.room_number }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% for allocation in room_allocations %}
+                                            {% if passenger in allocation.passengers %}
+                                                {{ allocation.check_in.strftime('%d %b %Y') }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% for allocation in room_allocations %}
+                                            {% if passenger in allocation.passengers %}
+                                                {{ allocation.check_out.strftime('%d %b %Y') }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Room Allocation -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h4>Room Allocation</h4>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Room Number</th>
+                                    <th>Passengers</th>
+                                    <th>Check-in Date</th>
+                                    <th>Check-out Date</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for allocation in room_allocations %}
+                                <tr>
+                                    <td>{{ allocation.room_number }}</td>
+                                    <td>
+                                        {% for passenger in allocation.passengers %}
+                                            {{ passenger.name }}<br>
+                                        {% endfor %}
+                                    </td>
+                                    <td>{{ allocation.check_in.strftime('%d %b %Y') }}</td>
+                                    <td>{{ allocation.check_out.strftime('%d %b %Y') }}</td>
+                                    <td>
+                                        {% if allocation.notes %}
+                                            {{ allocation.notes }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes Section -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h4>Special Notes</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Check-in Time:</strong> 14:00</p>
+                            <p><strong>Check-out Time:</strong> 11:00</p>
+                            <p><strong>Payment Terms:</strong> Full payment due at check-in</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Cancelation Policy:</strong> 48 hours prior to arrival</p>
+                            <p><strong>Special Requests:</strong> {{ booking.special_requests or '-' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="text-muted">Generated on: {{ datetime.now().strftime('%d %b %Y %H:%M') }}</p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <p class="text-muted">Page 1 of 1</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Print-specific styles */
+    @media print {
+        body {
+            font-size: 10pt;
+        }
+        .no-print {
+            display: none !important;
+        }
+        .print-only {
+            display: block !important;
+        }
+        .table {
+            page-break-inside: avoid;
+        }
+        .card {
+            page-break-inside: avoid;
+        }
+    }
+
+    /* General styles */
+    .table {
+        margin-bottom: 0;
+    }
+    .table-bordered td, .table-bordered th {
+        border: 1px solid #000 !important;
+    }
+    .card {
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+    }
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #ddd;
+    }
+    .card-title {
+        margin-bottom: 0;
+    }
+    .text-muted {
+        color: #6c757d;
+    }
+
+    /* PDF-specific styles */
+    @page {
+        size: A4;
+        margin: 2cm;
+    }
+    
+    .page-break {
+        page-break-after: always;
+    }
+</style>
+{% endblock %}
