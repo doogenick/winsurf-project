@@ -1,29 +1,27 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Date, ForeignKey, JSON, Boolean
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Enum
+from sqlalchemy import Enum, MetaData
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 import enum
 import json
-from typing import Dict, List, Optional
 
-# Import versioning extension
-try:
-    from sqlalchemy_continuum import make_versioned
-    make_versioned(user_cls=None)
-    HAS_VERSIONING = True
-except ImportError:
-    HAS_VERSIONING = False
-    print("Warning: sqlalchemy_continuum not installed, versioning disabled")
+# Create SQLAlchemy instance
+convention = {
+    "ix": 'ix_%(column_0_label)s',
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s"
+}
 
-# Create a base class for standalone SQLAlchemy usage (for tests)
-Base = declarative_base()
+metadata = MetaData(naming_convention=convention)
+db = SQLAlchemy(metadata=metadata)
 
-# Create Flask-SQLAlchemy instance for the application
-db = SQLAlchemy()
+# Base class for all models
+Base = db.Model
+
+# Now we can define our models that inherit from Base
 
 class User(UserMixin, db.Model):
     """System user (agent/admin) with authentication and relationships to quotes and agents."""
@@ -66,28 +64,6 @@ class Quote(db.Model):
     description = db.Column(db.Text)
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
-    
-    # Excel-like relationships
-    activities = db.relationship('Activity', backref='quote', lazy=True)
-    supplier_bookings = db.relationship('SupplierBooking', backref='quote', lazy=True)
-    documents = db.relationship('Document', backref='quote', lazy=True)
-    
-    # Excel-like cost breakdown
-    cost_breakdown = db.Column(db.JSON)  # Store Excel-like cost calculations
-    notes = db.Column(db.Text)  # For Excel-like comments
-    
-    # Versioning
-    version = db.Column(db.Integer, default=1)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Audit trail
-    audit_logs = db.relationship('QuoteAuditLog', backref='quote', lazy=True)
-    
-    def update_cost_breakdown(self, breakdown: Dict):
-        """Update cost breakdown with Excel-like calculations."""
-        self.cost_breakdown = breakdown
-        db.session.commit()
     quoted_passenger_min = db.Column(db.Integer, nullable=True)  # Minimum quoted group size
     quoted_passenger_max = db.Column(db.Integer, nullable=True)  # Maximum quoted group size (if range)
     booking_type = db.Column(db.String(10), nullable=True)  # 'FIT' or 'GROUP'
@@ -167,16 +143,24 @@ class Activity(db.Model):
 class Supplier(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    contact_person = db.Column(db.String(100))
-    contact_email = db.Column(db.String(120))  # Added for test compatibility
+    contact_name = db.Column(db.String(100))  # Changed from contact_person for consistency
     email = db.Column(db.String(120))
     phone = db.Column(db.String(20))
-    activities = db.relationship('Activity', backref='supplier', lazy=True)
-    rates = db.relationship('SupplierRate', backref='supplier', lazy=True, cascade='all, delete-orphan')
+    services = db.Column(db.Text)  # Comma-separated list of services
+    address = db.Column(db.Text)
+    city = db.Column(db.String(100))
+    country = db.Column(db.String(100))
+    postal_code = db.Column(db.String(20))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Enable versioning if available
-    if HAS_VERSIONING:
-        __versioned__ = {}
+    # Relationships
+    activities = db.relationship('Activity', backref='supplier', lazy=True)
+    supplier_rates = db.relationship('Rate', backref='supplier', lazy=True)  # Relationship with Rate model
+    
+    def __repr__(self):
+        return f'<Supplier {self.name}>'
 
 # Association table for many-to-many relationship between Quote and Supplier
 quote_suppliers = db.Table('quote_suppliers',
@@ -274,10 +258,11 @@ class ItineraryDay(db.Model):
     description = db.Column(db.Text)
     quote_id = db.Column(db.Integer, db.ForeignKey('quote.id'), nullable=False)
     items = db.relationship('ItineraryItem', backref='day', lazy=True, cascade='all, delete-orphan', order_by='ItineraryItem.start_time')
+    
 class ItineraryItem(db.Model):
     """Item/activity within an itinerary day."""
     id = db.Column(db.Integer, primary_key=True)
-    item_type = db.Column(db.String(50))  # transport, activity, meal, accommodation, free time, etc.
+    item_type = db.Column(db.String(50))
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     start_time = db.Column(db.Time)
@@ -290,53 +275,119 @@ class ItineraryItem(db.Model):
     activities = db.relationship('Activity', backref='itinerary_item', lazy=True)
 
 
-class SupplierRate(db.Model):
-    """Supplier rates with seasonal variations."""
+# Association table for tour packages and properties
+tour_properties = db.Table('tour_properties',
+    db.Column('tour_id', db.Integer, db.ForeignKey('tour_package.id'), primary_key=True),
+    db.Column('property_id', db.Integer, db.ForeignKey('property.id'), primary_key=True),
+    db.Column('night_number', db.Integer, nullable=True),  # Which night of the tour
+    db.Column('is_included', db.Boolean, default=True),  # Whether this is included in base price
+    db.Column('notes', db.Text, nullable=True)  # Any specific notes about this property for this tour
+)
+
+# Association table for tour packages and activities
+tour_activities = db.Table('tour_activities',
+    db.Column('tour_id', db.Integer, db.ForeignKey('tour_package.id'), primary_key=True),
+    db.Column('activity_id', db.Integer, db.ForeignKey('activity.id'), primary_key=True),
+    db.Column('day_number', db.Integer, nullable=True),  # Which day of the tour
+    db.Column('is_included', db.Boolean, default=True),  # Whether this is included in base price
+    db.Column('notes', db.Text, nullable=True)  # Any specific notes about this activity for this tour
+)
+
+class Property(db.Model):
+    """Accommodation property used in tours."""
     id = db.Column(db.Integer, primary_key=True)
-    supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id'), nullable=False)
-    start_date = db.Column(db.Date, nullable=False)
-    end_date = db.Column(db.Date, nullable=False)
-    season = db.Column(db.String(20))  # high, low, shoulder
-    cost = db.Column(db.Float, nullable=False)
-    room_type = db.Column(db.String(50))  # Optional, for accommodation suppliers
+    name = db.Column(db.String(200), nullable=False)
+    type = db.Column(db.String(100), nullable=False)  # e.g., 'Hotel', 'Lodge', 'Campsite', 'Tented Camp'
+    location = db.Column(db.String(200), nullable=False)
+    city = db.Column(db.String(100))
+    country = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    room_types = db.Column(db.Text)  # JSON string of available room types
+    amenities = db.Column(db.Text)    # JSON string of amenities
+    contact_name = db.Column(db.String(100))
+    contact_email = db.Column(db.String(120))
+    contact_phone = db.Column(db.String(30))
+    website = db.Column(db.String(200))
     is_active = db.Column(db.Boolean, default=True)
-    notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Enable versioning if available
-    if HAS_VERSIONING:
-        __versioned__ = {}
-        
-    def is_applicable_on(self, date):
-        """Check if rate applies to a given date."""
-        return self.start_date <= date <= self.end_date and self.is_active
+    def __repr__(self):
+        return f'<Property {self.name}, {self.location}, {self.country}>'
 
-
-class Document(db.Model):
-    """Document associated with a quote (PDF, invoice, etc)."""
+class Activity(db.Model):
+    """Activity that can be included in tours."""
     id = db.Column(db.Integer, primary_key=True)
-    quote_id = db.Column(db.Integer, db.ForeignKey('quote.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    document_type = db.Column(db.String(50))  # quote, invoice, itinerary, etc.
-    file_path = db.Column(db.String(500))
-    file_name = db.Column(db.String(200))
+    name = db.Column(db.String(200), nullable=False)
+    type = db.Column(db.String(100), nullable=False)  # e.g., 'Game Drive', 'Cultural', 'Adventure', 'Sightseeing'
+    location = db.Column(db.String(200))
+    city = db.Column(db.String(100))
+    country = db.Column(db.String(100))
+    description = db.Column(db.Text)
+    duration_hours = db.Column(db.Float)  # Duration in hours
+    min_participants = db.Column(db.Integer, default=1)
+    max_participants = db.Column(db.Integer)
+    is_seasonal = db.Column(db.Boolean, default=False)
+    season_start = db.Column(db.Date, nullable=True)
+    season_end = db.Column(db.Date, nullable=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id'))
+    is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    version = db.Column(db.Integer, default=1)
-    is_final = db.Column(db.Boolean, default=False)
-    notes = db.Column(db.Text)
-
-
-class QuoteAuditLog(db.Model):
-    """Audit trail for quote changes."""
-    id = db.Column(db.Integer, primary_key=True)
-    quote_id = db.Column(db.Integer, db.ForeignKey('quote.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    action = db.Column(db.String(50))  # created, updated, status_changed, etc.
-    details = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    data_before = db.Column(db.JSON)
-    data_after = db.Column(db.JSON)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    user = db.relationship('User', backref='audit_logs')
+    supplier = db.relationship('Supplier', backref='activities')
+    
+    def __repr__(self):
+        return f'<Activity {self.name}, {self.type}, {self.location or ""} {self.country or ""}>'.strip()
+
+class TourPackage(db.Model):
+    """Predefined tour package that can be used as a template for quotes."""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    code = db.Column(db.String(20), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    duration = db.Column(db.Integer, nullable=False)  # in days
+    type = db.Column(db.String(50), nullable=False)  # e.g., 'Camping', 'Accommodated', 'Small Group'
+    countries = db.Column(db.String(200), nullable=False)  # Comma-separated list of countries
+    departure_location = db.Column(db.String(200), nullable=False)
+    ending_location = db.Column(db.String(200), nullable=False)
+    max_passengers = db.Column(db.Integer, nullable=False)
+    included = db.Column(db.Text)  # JSON string of included items
+    excluded = db.Column(db.Text)   # JSON string of excluded items
+    special_notes = db.Column(db.Text)
+    base_price = db.Column(db.Float)  # Base price per person (if applicable)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    days = db.relationship('TourDay', backref='package', lazy=True, cascade='all, delete-orphan')
+    properties = db.relationship('Property', 
+                               secondary=tour_properties,
+                               lazy='subquery',
+                               backref=db.backref('tours', lazy=True))
+    activities = db.relationship('Activity',
+                               secondary=tour_activities,
+                               lazy='subquery',
+                               backref=db.backref('tours', lazy=True))
+    
+    def __repr__(self):
+        return f'<TourPackage {self.code} - {self.name}>'
+
+
+class TourDay(db.Model):
+    """A single day in a tour package's itinerary."""
+    id = db.Column(db.Integer, primary_key=True)
+    day_number = db.Column(db.Integer, nullable=False)
+    title = db.Column(db.String(200))
+    description = db.Column(db.Text)
+    meals = db.Column(db.String(100))  # e.g., 'Breakfast, Lunch, Dinner'
+    accommodation = db.Column(db.String(200))
+    activities = db.Column(db.Text)  # Description of activities
+    notes = db.Column(db.Text)
+    
+    # Foreign key to TourPackage
+    package_id = db.Column(db.Integer, db.ForeignKey('tour_package.id'), nullable=False)
+    
+    def __repr__(self):
+        return f'<TourDay {self.day_number} - {self.title or "Untitled"}>'

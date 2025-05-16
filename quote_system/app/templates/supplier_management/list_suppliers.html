@@ -1,0 +1,142 @@
+{% extends "supplier_management/base.html" %}
+
+{% block supplier_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>All Suppliers</h2>
+    <a href="{{ url_for('supplier_management.new_supplier') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Add New Supplier
+    </a>
+</div>
+
+{% if suppliers %}
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Supplier Name</th>
+                            <th>Contact</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Services</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for supplier in suppliers %}
+                        <tr>
+                            <td>
+                                <strong>{{ supplier.name }}</strong>
+                                {% if not supplier.is_active %}
+                                    <span class="badge bg-secondary ms-2">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ supplier.contact_name or 'N/A' }}</td>
+                            <td>
+                                {% if supplier.email %}
+                                    <a href="mailto:{{ supplier.email }}" class="text-decoration-none">
+                                        {{ supplier.email }}
+                                    </a>
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>{{ supplier.phone or 'N/A' }}</td>
+                            <td>
+                                {% if supplier.services %}
+                                    {% set services = supplier.services.split(',') %}
+                                    {% for service in services[:2] %}
+                                        <span class="badge bg-light text-dark">{{ service.strip() }}</span>
+                                        {% if loop.index == 2 and services|length > 2 %}
+                                            <span class="text-muted">+{{ services|length - 2 }} more</span>
+                                            {% break %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if services|length == 0 %}
+                                        <span class="text-muted">None specified</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">None specified</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('supplier_management.view_supplier', supplier_id=supplier.id) }}" 
+                                       class="btn btn-sm btn-outline-primary" 
+                                       title="View Supplier">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('supplier_management.edit_supplier', supplier_id=supplier.id) }}" 
+                                       class="btn btn-sm btn-outline-secondary"
+                                       title="Edit Supplier">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-danger" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteSupplierModal{{ supplier.id }}"
+                                            title="Delete Supplier">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Delete Confirmation Modal -->
+                                <div class="modal fade" id="deleteSupplierModal{{ supplier.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Confirm Delete</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Are you sure you want to delete <strong>{{ supplier.name }}</strong>? This action cannot be undone.</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <form action="{{ url_for('supplier_management.delete_supplier', supplier_id=supplier.id) }}" method="POST" class="d-inline">
+                                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted">
+                    Showing <strong>{{ suppliers|length }}</strong> of <strong>{{ suppliers|length }}</strong> suppliers
+                </div>
+                <nav aria-label="Supplier pagination">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item">
+                            <a class="page-link" href="#">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="text-center py-5">
+        <div class="mb-4">
+            <i class="bi bi-people text-muted" style="font-size: 3rem; opacity: 0.5;"></i>
+        </div>
+        <h4 class="text-muted mb-3">No Suppliers Found</h4>
+        <p class="text-muted mb-4">Get started by adding your first supplier to the system.</p>
+        <a href="{{ url_for('supplier_management.new_supplier') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Your First Supplier
+        </a>
+    </div>
+{% endif %}
+{% endblock %}

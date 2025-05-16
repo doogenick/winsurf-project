@@ -1,6 +1,7 @@
 from datetime import date
-from sqlalchemy import CheckConstraint
-from database.models import db
+from sqlalchemy import CheckConstraint, ForeignKey
+from sqlalchemy.orm import relationship
+from quote_system.database.models import db
 
 class Rate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -9,7 +10,8 @@ class Rate(db.Model):
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
     base_rate = db.Column(db.Float, nullable=False)
-    seasonal_rates = db.relationship('SeasonalRate', backref='rate', lazy=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id'), nullable=True)
+    seasonal_rates = db.relationship('SeasonalRate', backref='rate', lazy=True, cascade='all, delete-orphan')
     
     __table_args__ = (
         CheckConstraint('start_date <= end_date', name='valid_date_range'),

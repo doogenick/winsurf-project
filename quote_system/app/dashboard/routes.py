@@ -41,8 +41,12 @@ def dashboard():
     
     # Get top suppliers
     top_suppliers = db.session.query(
-        Supplier.name, func.count(Quote.id)
-    ).join(quote_suppliers).join(Quote).group_by(Supplier.name).order_by(func.count(Quote.id).desc()).limit(5).all()
+        Supplier.name, func.count(quote_suppliers.c.quote_id).label('quote_count')
+    ).join(quote_suppliers, Supplier.id == quote_suppliers.c.supplier_id)\
+    .group_by(Supplier.name)\
+    .order_by(func.count(quote_suppliers.c.quote_id).desc())\
+    .limit(5)\
+    .all()
     
     # Recent activity feed
     recent_activity = Quote.query.order_by(Quote.updated_at.desc()).limit(10).all()

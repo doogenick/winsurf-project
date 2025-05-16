@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required, current_user
+from flask_login import current_user
+from quote_system.app.auth.decorators import login_required
 from quote_system.database.models import db, Quote, Activity, Supplier
 from .pricing_engine import QuoteEngine
 from .wetu_integration import WetuManager
@@ -67,21 +68,6 @@ def new_quote():
             db.session.rollback()
             flash(f'Error creating quote: {str(e)}', 'error')
             return redirect(url_for('quoting.new_quote'))
-
-    return render_template('quoting/new_quote.html')
-        
-        # Update quote with calculated values
-        quote.total_cost = pricing_result['total_cost']
-        quote.margin_percentage = pricing_result['margin_percentage']
-        quote.final_price = pricing_result['final_price']
-        
-        # Add to database
-        db.session.add(quote)
-        db.session.commit()
-        
-        flash('Quote created successfully!', 'success')
-        return redirect(url_for('quoting.list_quotes'))
-    
     return render_template('quoting/new_quote.html')
 
 @quoting_bp.route('/quotes/<int:quote_id>')

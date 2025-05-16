@@ -1,0 +1,229 @@
+{% extends "supplier_management/base.html" %}
+
+{% block supplier_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('supplier_management.list_suppliers') }}">Suppliers</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('supplier_management.view_supplier', supplier_id=supplier.id) }}">{{ supplier.name|truncate(20) }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Edit</li>
+            </ol>
+        </nav>
+        <h2 class="mb-0">Edit Supplier: {{ supplier.name }}</h2>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('supplier_management.edit_supplier', supplier_id=supplier.id) }}" class="needs-validation" novalidate>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Supplier Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-lg" id="name" name="name" 
+                               value="{{ supplier.name }}" required>
+                        <div class="invalid-feedback">
+                            Please provide a supplier name.
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="contact_name" class="form-label">Contact Person</label>
+                        <input type="text" class="form-control" id="contact_name" name="contact_name" 
+                               value="{{ supplier.contact_name or '' }}">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="{{ supplier.email or '' }}" placeholder="email@example.com">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Phone Number</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                            <input type="tel" class="form-control" id="phone" name="phone" 
+                                   value="{{ supplier.phone or '' }}" placeholder="+1 (555) 123-4567">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="services" class="form-label">Services</label>
+                <input type="text" class="form-control" id="services" name="services" 
+                       value="{{ supplier.services or '' }}"
+                       placeholder="e.g., Accommodation, Transportation, Tours"
+                       data-role="tagsinput">
+                <div class="form-text">
+                    Enter services separated by commas or press Enter after each service
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Street Address</label>
+                        <input type="text" class="form-control" id="address" name="address" 
+                               value="{{ supplier.address or '' }}" placeholder="123 Main St">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="postal_code" class="form-label">Postal Code</label>
+                        <input type="text" class="form-control" id="postal_code" name="postal_code"
+                               value="{{ supplier.postal_code or '' }}">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="city" class="form-label">City</label>
+                        <input type="text" class="form-control" id="city" name="city" 
+                               value="{{ supplier.city or '' }}">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="country" class="form-label">Country</label>
+                        <select class="form-select" id="country" name="country">
+                            <option value="" {% if not supplier.country %}selected{% endif %}>Select a country...</option>
+                            <option value="United States" {% if supplier.country == 'United States' %}selected{% endif %}>United States</option>
+                            <option value="Canada" {% if supplier.country == 'Canada' %}selected{% endif %}>Canada</option>
+                            <option value="United Kingdom" {% if supplier.country == 'United Kingdom' %}selected{% endif %}>United Kingdom</option>
+                            <option value="Australia" {% if supplier.country == 'Australia' %}selected{% endif %}>Australia</option>
+                            <option value="New Zealand" {% if supplier.country == 'New Zealand' %}selected{% endif %}>New Zealand</option>
+                            <option value="South Africa" {% if supplier.country == 'South Africa' %}selected{% endif %}>South Africa</option>
+                            <option value="Other" {% if supplier.country and supplier.country not in ['United States', 'Canada', 'United Kingdom', 'Australia', 'New Zealand', 'South Africa'] %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                           {% if supplier.is_active %}checked{% endif %}>
+                    <label class="form-check-label" for="is_active">Active Supplier</label>
+                </div>
+                <div class="form-text">
+                    Inactive suppliers won't appear in selection dropdowns but will remain in the system.
+                </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('supplier_management.view_supplier', supplier_id=supplier.id) }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i> Cancel
+                </a>
+                <div class="btn-group">
+                    <button type="submit" name="save_and_view" value="true" class="btn btn-outline-primary">
+                        <i class="bi bi-save"></i> Save & View
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4 border-danger">
+    <div class="card-header bg-danger bg-opacity-10 text-danger">
+        <h5 class="mb-0">Danger Zone</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h6 class="mb-1">Delete this supplier</h6>
+                <p class="mb-0 text-muted">Once you delete a supplier, there is no going back. Please be certain.</p>
+            </div>
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteSupplierModal">
+                <i class="bi bi-trash"></i> Delete Supplier
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteSupplierModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete {{ supplier.name }}?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong>{{ supplier.name }}</strong>? This action cannot be undone and will also delete all associated rates and data.</p>
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Warning:</strong> This will permanently remove all data associated with this supplier.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('supplier_management.delete_supplier', supplier_id=supplier.id) }}" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Delete Permanently
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Example starter JavaScript for disabling form submissions if there are invalid fields
+(function () {
+  'use strict'
+  
+  // Fetch all the forms we want to apply custom Bootstrap validation styles to
+  var forms = document.querySelectorAll('.needs-validation')
+  
+  // Loop over them and prevent submission
+  Array.prototype.slice.call(forms)
+    .forEach(function (form) {
+      form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+        
+        form.classList.add('was-validated')
+      }, false)
+    })
+})()
+</script>
+
+<!-- Initialize Bootstrap Tags Input -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // This would be replaced with actual Bootstrap Tags Input initialization
+    // For now, we'll just log that the script loaded
+    console.log('Form validation and tags input initialized');
+    
+    // You would typically initialize tags input here:
+    // $('#services').tagsinput({
+    //     tagClass: 'badge bg-primary me-1 mb-1',
+    //     trimValue: true
+    // });
+});
+</script>
+{% endblock %}

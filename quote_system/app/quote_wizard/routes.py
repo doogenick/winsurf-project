@@ -16,6 +16,13 @@ import logging
 
 # Removed local get_quote_or_404; now using centralized version
 
+def check_quote_access(quote):
+    """Check if the current user has access to the quote."""
+    if not current_user.is_authenticated:
+        return False
+    if current_user.role == 'admin':
+        return True
+    return quote.creator_id == current_user.id
 
 @bp.route('/start', methods=['GET', 'POST'])
 @login_required
@@ -103,5 +110,3 @@ def delete_operational_note(quote_id, note_id):
     db.session.commit()
     flash('Operational note deleted.', 'success')
     return redirect(url_for('quote_wizard.booking_detail', quote_id=quote_id) + '#ops')
-
-

@@ -1,227 +1,255 @@
 import unittest
-import sys
 import os
-from datetime import date
-import pytest
-from sqlalchemy import create_engine, Table, MetaData
-from sqlalchemy.orm import sessionmaker, clear_mappers, scoped_session
-from sqlalchemy.ext.declarative import declarative_base
+import sys
+from datetime import date, datetime
+from sqlalchemy import create_engine, MetaData
+from sqlalchemy.orm import sessionmaker
+
+# Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Use the actual Base from the app's models
-from quote_system.database.models import Base
+# Import the actual models and db instance
+from quote_system.database.models import db, User, Quote, Activity, Supplier, Client, Agent
+from quote_system.database.rate_models import Rate, SeasonalRate
 
-# Create mock/replica classes just for testing
-# This avoids issues with Flask-SQLAlchemy vs regular SQLAlchemy
-class MockMixin:  
-    id = None  # Will be added by the concrete classes
-    
-    @classmethod
-    def create_table(cls, engine):
-        if not engine.dialect.has_table(engine, cls.__tablename__):
-            cls.__table__.create(engine)
-            
-# Import from our models module for reference
-from quote_system.database.models import Activity as AppActivity
-from quote_system.database.models import Supplier as AppSupplier
-from quote_system.database.models import SupplierRate as AppSupplierRate
-from quote_system.database.models import Quote
+# Create a test database in memory
+TEST_DATABASE_URI = 'sqlite:///:memory:'
 
-class TestDatabaseModels(unittest.TestCase):
-    """Test suite for database models and their relationships"""
-    
+# Base test class with setup/teardown
+class BaseTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        # Create in-memory SQLite database for testing
-        cls.engine = create_engine('sqlite:///:memory:')
+        # Create engine and session
+        cls.engine = create_engine(TEST_DATABASE_URI)
         cls.Session = sessionmaker(bind=cls.engine)
         
         # Create all tables
-        Base.metadata.create_all(cls.engine)
-    
+        db.metadata.create_all(bind=cls.engine)
+
     @classmethod
     def tearDownClass(cls):
-        # Drop all tables and clear mappers
-        Base.metadata.drop_all(cls.engine)
-        clear_mappers()
-        
+        db.metadata.drop_all(bind=cls.engine)
+        cls.engine.dispose()
+
     def setUp(self):
-        # Create a new session for each test
+        # Start a new session for each test
         self.session = self.Session()
-        
+        self.session.begin()
+
     def tearDown(self):
-        # Rollback any changes and close the session
+        # Rollback and close the session after each test
         self.session.rollback()
         self.session.close()
+
+# Test class for database models
+class TestDatabaseModels(BaseTestCase):
+    """Test suite for database models and their relationships"""
     
-    def test_quote_creation_and_versioning(self):
-        """Test creating a quote with versioning"""
+    def test_quote_creation(self):
+        """Test creating a quote"""
+        # Create a user first (required for the foreign key)
+        user = User(
+            username='testuser',
+            email='test@example.com',
+            first_name='Test',
+            last_name='User',
+            role='agent'
+        )
+        user.set_password('password')
+        self.session.add(user)
+        
+        # Create a client
+        client = Client(
+            first_name='Test',
+            last_name='Client',
+            email='client@example.com',
+            phone='1234567890'
+        )
+        self.session.add(client)
+        
+        # Create an agent
+        agent = Agent(
+            name='Test Agent',
+            code='TA001',
+            email='agent@example.com',
+            commission_rate=10.0
+        )
+        self.session.add(agent)
+        
+        self.session.commit()
+        
         # Create a quote
         quote = Quote(
-            title="Test Quote",
+            quote_number='QT-001',
+            title='Test Quote',
+            description='Test Description',
             start_date=date(2025, 6, 1),
             end_date=date(2025, 6, 10),
             quoted_passenger_min=8,
             quoted_passenger_max=8,
-            status='draft',
-            notes="Test notes"
+            total_cost=5000.0,
+            margin_percentage=15.0,
+            final_price=5750.0,
+            creator_id=user.id,
+            client_id=client.id,
+            agent_id=agent.id
         )
-        
-        # Add to session and commit
         self.session.add(quote)
         self.session.commit()
         
-        # Verify it was created with an ID
+        # Verify the quote was created
         self.assertIsNotNone(quote.id)
+        self.assertEqual(quote.quote_number, 'QT-001')
+        self.assertEqual(quote.title, 'Test Quote')
+        self.assertEqual(quote.final_price, 5750.0)
         
-        # Modify the quote (should create a new version)
-        quote.pax = 10
-        quote.notes = "Updated notes"
+    def test_supplier_creation(self):
+        """Test creating a supplier with rates"""
+        # Create a supplier
+        supplier = Supplier(
+            name='Test Hotel',
+            contact_name='John Doe',
+            email='hotel@example.com',
+            phone='1234567890',
+            services='Accommodation, Meals',
+            address='123 Test St',
+            city='Test City',
+            country='Test Country',
+            postal_code='12345'
+        )
+        self.session.add(supplier)
+        self.session.commit()  # Commit to get the supplier ID
+        
+        # Create a rate for the supplier
+        rate = Rate(
+            name='Standard Rate',
+            description='Standard per person rate',
+            start_date=date(2025, 1, 1),
+            end_date=date(2025, 12, 31),
+            base_rate=150.0,
+            supplier_id=supplier.id
+        )
+        self.session.add(rate)
+        self.session.commit()  # Commit to get the rate ID
+        
+        # Create a seasonal rate
+        seasonal_rate = SeasonalRate(
+            rate_id=rate.id,
+            season_name='High Season',
+            multiplier=1.2,  # 20% increase
+            start_date=date(2025, 6, 1),
+            end_date=date(2025, 8, 31)
+        )
+        self.session.add(seasonal_rate)
+        
         self.session.commit()
         
-        # Check version history (if using sqlalchemy-continuum)
-        if hasattr(quote, "versions"):
-            versions = list(quote.versions)
-            self.assertEqual(len(versions), 2)  # Original + modified
-            self.assertEqual(versions[0].pax, 8)  # Original version
-            self.assertEqual(versions[1].pax, 10)  # Updated version
+        # Verify the relationships
+        self.session.refresh(supplier)  # Refresh to load relationships
+        self.assertEqual(len(supplier.supplier_rates), 1)
+        rate = supplier.supplier_rates[0]
+        self.assertEqual(rate.base_rate, 150.0)
+        self.assertEqual(rate.name, 'Standard Rate')
+        self.assertEqual(len(rate.seasonal_rates), 1)
+        seasonal_rate = rate.seasonal_rates[0]
+        self.assertEqual(seasonal_rate.season_name, 'High Season')
+        self.assertEqual(seasonal_rate.multiplier, 1.2)
         
-    def test_quote_activity_relationship(self):
-        """Test the relationship between quotes and activities"""
-        # Create a quote
+    def test_activity_creation(self):
+        """Test creating an activity linked to a quote"""
+        # First create a user
+        user = User(
+            username='testuser2',
+            email='test2@example.com',
+            first_name='Test',
+            last_name='User',
+            role='agent'
+        )
+        user.set_password('password')
+        self.session.add(user)
+        
+        # Create a client
+        client = Client(
+            first_name='Test',
+            last_name='Client',
+            email='client2@example.com',
+            phone='1234567890',
+            address='123 Test St',
+            city='Test City',
+            country='Test Country',
+            postal_code='12345'
+        )
+        self.session.add(client)
+        
+        # Create an agent
+        agent = Agent(
+            name='Test Agent',
+            code='TA002',
+            email='agent2@example.com',
+            phone='1234567890',
+            commission_rate=10.0,
+            is_active=True,
+            user_id=user.id
+        )
+        self.session.add(agent)
+        
+        # Commit the user, client, and agent first to get their IDs
+        self.session.commit()
+        
+        # Now create the quote with all required fields
         quote = Quote(
-            title="Activity Test",
-            start_date=date.today(),
-            end_date=date.today(),
+            quote_number='QT-002',
+            title='Activity Test',
+            description='Test activity description',
+            start_date=date(2025, 7, 1),
+            end_date=date(2025, 7, 7),
             quoted_passenger_min=4,
-            quoted_passenger_max=4
+            quoted_passenger_max=4,
+            booking_type='FIT',
+            total_cost=0.0,
+            margin_percentage=15.0,
+            final_price=0.0,
+            status='DRAFT',
+            form_progress='{"client_info": "not_started", "itinerary": "not_started", "costing": "not_started", "review": "not_started"}',
+            creator_id=user.id,
+            client_id=client.id,
+            agent_id=agent.id
         )
         self.session.add(quote)
-        
-        # Create activities linked to the quote
-        activities = [
-            Activity(name="Game Drive", client_cost=350.0, crew_cost=100.0, quote=quote),
-            Activity(name="Guided Hike", client_cost=200.0, crew_cost=50.0, quote=quote)
-        ]
-        self.session.add_all(activities)
-        self.session.commit()
-        
-        # Verify relationships
-        self.assertEqual(len(quote.activities), 2)
-        self.assertEqual(quote.activities[0].name, "Game Drive")
-        self.assertEqual(quote.activities[1].name, "Guided Hike")
-        
-        # Test cascading delete
-        self.session.delete(quote)
-        self.session.commit()
-        
-        # Activities should be deleted with the quote
-        activity_count = self.session.query(Activity).count()
-        self.assertEqual(activity_count, 0)
+        self.session.flush()  # Flush to get the quote ID
     
-    def test_supplier_rates(self):
-        """Test suppliers with seasonal rates"""
         # Create a supplier
-        supplier = Supplier(name="Test Lodge", contact_email="lodge@example.com")
+        supplier = Supplier(
+            name='Test Activity Provider',
+            email='activities@example.com',
+            phone='1234567890',
+            contact_name='Test Contact',
+            address='123 Test St',
+            city='Test City',
+            country='Test Country',
+            postal_code='12345'
+        )
         self.session.add(supplier)
-        
-        # Create seasonal rates for the supplier
-        rates = [
-            SupplierRate(
-                supplier=supplier,
-                start_date=date(2025, 1, 1),
-                end_date=date(2025, 4, 30),
-                season="low",
-                cost=1500.0
-            ),
-            SupplierRate(
-                supplier=supplier,
-                start_date=date(2025, 5, 1),
-                end_date=date(2025, 8, 31),
-                season="high",
-                cost=2200.0
-            )
-        ]
-        self.session.add_all(rates)
+        self.session.flush()  # Flush to get the supplier ID
+    
+        # Create an activity
+        activity = Activity(
+            name='Guided Tour',
+            description='A guided tour of the city',
+            cost=75.0,
+            duration=180,  # 3 hours
+            quote_id=quote.id,
+            supplier_id=supplier.id
+        )
+        self.session.add(activity)
+    
         self.session.commit()
         
-        # Verify relationship
-        self.assertEqual(len(supplier.rates), 2)
-        
-        # Verify we can get the right rate for a specific date
-        summer_rate = next((rate for rate in supplier.rates 
-                         if date(2025, 7, 15) >= rate.start_date 
-                         and date(2025, 7, 15) <= rate.end_date), None)
-        self.assertIsNotNone(summer_rate)
-        self.assertEqual(summer_rate.season, "high")
-        self.assertEqual(summer_rate.cost, 2200.0)
-    
-    def test_crew_cost_allocation(self):
-        """Test allocating crew costs across passengers"""
-        # Create a quote with activities that have crew costs
-        quote = Quote(title="Crew Test", quoted_passenger_min=6,
-            quoted_passenger_max=6, start_date=date.today(), end_date=date.today())
-        self.session.add(quote)
-        
-        # Add activities with both client and crew costs
-        activities = [
-            Activity(name="Park Entry", client_cost=200.0, crew_cost=200.0, quote=quote),
-            Activity(name="Boat Trip", client_cost=300.0, crew_cost=150.0, quote=quote)
-        ]
-        self.session.add_all(activities)
-        self.session.commit()
-        
-        # Calculate total client costs
-        client_costs = sum(a.client_cost for a in quote.activities) * quote.pax
-        
-        # Calculate total crew costs (assuming 2 crew members)
-        crew_members = 2
-        crew_costs = sum(a.crew_cost for a in quote.activities) * crew_members
-        
-        # Calculate crew cost allocation per passenger
-        crew_cost_per_pax = crew_costs / quote.pax
-        
-        # Verify calculations
-        expected_total = client_costs + crew_costs
-        expected_per_pax = (client_costs / quote.pax) + crew_cost_per_pax
-        
-        # In a real application, we'd have a method to calculate this
-        # For the test, we'll just verify our manual calculation
-        self.assertEqual(client_costs, 3000.0)  # (200+300) * 6 passengers
-        self.assertEqual(crew_costs, 700.0)  # (200+150) * 2 crew
-        self.assertEqual(crew_cost_per_pax, 116.67, delta=0.01)  # 700 / 6 passengers
-
-# These pytest fixtures would be used by other tests
-@pytest.fixture
-def test_db():
-    """Create a test database session"""
-    engine = create_engine('sqlite:///:memory:')
-    Session = sessionmaker(bind=engine)
-    Base.metadata.create_all(engine)
-    session = Session()
-    yield session
-    session.rollback()
-    session.close()
-    Base.metadata.drop_all(engine)
-    clear_mappers()
-
-@pytest.fixture
-def sample_quote(test_db):
-    """Create a sample quote with activities"""
-    quote = Quote(
-        client_name="Sample Client",
-        start_date=date.today(),
-        end_date=date.today(),
-        pax=8
-    )
-    test_db.add(quote)
-    
-    # Add some activities
-    activity = Activity(name="game_drive", client_cost=350.0, crew_cost=100.0, quote=quote)
-    test_db.add(activity)
-    test_db.commit()
-    
-    return quote
+        # Verify the relationships
+        self.assertEqual(len(quote.activities), 1)
+        self.assertEqual(quote.activities[0].name, 'Guided Tour')
+        self.assertEqual(activity.quote_id, quote.id)
+        self.assertEqual(activity.supplier_id, supplier.id)
 
 if __name__ == '__main__':
     unittest.main()

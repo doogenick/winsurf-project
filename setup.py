@@ -1,5 +1,5 @@
 from quote_system.app import create_app
-from database.models import db, User
+from quote_system.database.models import db, User
 from werkzeug.security import generate_password_hash
 
 app = create_app()

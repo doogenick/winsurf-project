@@ -1,0 +1,315 @@
+{% extends "supplier_management/base.html" %}
+
+{% block supplier_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('supplier_management.list_suppliers') }}">Suppliers</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('supplier_management.view_supplier', supplier_id=supplier.id) }}">{{ supplier.name|truncate(20) }}</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('supplier_management.view_supplier', supplier_id=supplier.id) }}#rates">Rates</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ rate.name|truncate(30) }}</li>
+            </ol>
+        </nav>
+        <h2 class="mb-0">{{ rate.name }}</h2>
+    </div>
+    <div class="btn-group">
+        <a href="{{ url_for('supplier_management.edit_supplier_rate', supplier_id=supplier.id, rate_id=rate.id) }}" 
+           class="btn btn-outline-primary">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        <a href="{{ url_for('supplier_management.list_supplier_rates', supplier_id=supplier.id) }}" 
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Rates
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">Rate Details</h5>
+                    <span class="badge {% if rate.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                        {% if rate.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <h6>Rate Type</h6>
+                            <p class="mb-0">
+                                {% if rate.rate_type == 'fixed' %}
+                                    Fixed Rate
+                                {% elif rate.rate_type == 'per_person' %}
+                                    Per Person
+                                {% elif rate.rate_type == 'per_unit' %}
+                                    Per Unit
+                                {% elif rate.rate_type == 'hourly' %}
+                                    Hourly
+                                {% elif rate.rate_type == 'daily' %}
+                                    Daily
+                                {% elif rate.rate_type == 'weekly' %}
+                                    Weekly
+                                {% elif rate.rate_type == 'monthly' %}
+                                    Monthly
+                                {% else %}
+                                    {{ rate.rate_type }}
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <h6>Base Amount</h6>
+                            <p class="mb-0">
+                                {{ "%0.2f"|format(rate.base_rate) }} {{ rate.currency }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if rate.description %}
+                <div class="mb-3">
+                    <h6>Description</h6>
+                    <p class="mb-0">{{ rate.description|nl2br }}</p>
+                </div>
+                {% endif %}
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <h6>Validity Period</h6>
+                            <p class="mb-0">
+                                {% if rate.start_date and rate.end_date %}
+                                    {{ rate.start_date.strftime('%b %d, %Y') }} to {{ rate.end_date.strftime('%b %d, %Y') }}
+                                    {% set today = now().date() %}
+                                    {% if today < rate.start_date %}
+                                        <span class="badge bg-info ms-2">Scheduled</span>
+                                    {% elif today > rate.end_date %}
+                                        <span class="badge bg-secondary ms-2">Expired</span>
+                                    {% else %}
+                                        <span class="badge bg-success ms-2">Active</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">No date range set</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <h6>Seasonal Rates</h6>
+                            <p class="mb-0">
+                                {{ rate.seasonal_rates|length }} season{{ 's' if rate.seasonal_rates|length != 1 else '' }} defined
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 pt-3 border-top">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Seasonal Rates</h5>
+                        <a href="{{ url_for('supplier_management.edit_supplier_rate', supplier_id=supplier.id, rate_id=rate.id) }}" 
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-plus-circle"></i> Add Seasonal Rate
+                        </a>
+                    </div>
+                    
+                    {% if rate.seasonal_rates %}
+                        <div class="table-responsive mt-3">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Season Name</th>
+                                        <th>Date Range</th>
+                                        <th>Rate Adjustment</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for seasonal in rate.seasonal_rates|sort(attribute='start_date') %}
+                                    <tr>
+                                        <td>{{ seasonal.season_name }}</td>
+                                        <td>
+                                            {{ seasonal.start_date.strftime('%b %d') }} - {{ seasonal.end_date.strftime('%b %d, %Y') }}
+                                        </td>
+                                        <td>
+                                            {% if seasonal.rate_type == 'percentage' %}
+                                                +{{ "%0.2f"|format(seasonal.rate_amount) }}%
+                                            {% else %}
+                                                +{{ seasonal.currency }} {{ "%0.2f"|format(seasonal.rate_amount) }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if seasonal.notes %}
+                                                <span class="d-inline-block text-truncate" style="max-width: 200px;" 
+                                                      data-bs-toggle="tooltip" data-bs-placement="top" title="{{ seasonal.notes }}">
+                                                    {{ seasonal.notes }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">No notes</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5 border rounded bg-light mt-3">
+                            <i class="bi bi-calendar-range display-5 text-muted mb-3"></i>
+                            <h5>No Seasonal Rates Defined</h5>
+                            <p class="text-muted mb-0">Add seasonal rates to adjust pricing during specific date ranges.</p>
+                            <a href="{{ url_for('supplier_management.edit_supplier_rate', supplier_id=supplier.id, rate_id=rate.id) }}" 
+                               class="btn btn-primary mt-3">
+                                <i class="bi bi-plus-circle"></i> Add Seasonal Rate
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <h5 class="mb-3">Rate Calculation Example</h5>
+                <div class="alert alert-info">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-calculator fs-4"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6>How this rate is calculated:</h6>
+                            <p class="mb-0">
+                                {% if rate.rate_type == 'fixed' %}
+                                    <strong>Base Rate:</strong> {{ "%0.2f"|format(rate.base_rate) }} {{ rate.currency }} (fixed amount)
+                                {% elif rate.rate_type == 'per_person' %}
+                                    <strong>Base Rate:</strong> {{ "%0.2f"|format(rate.base_rate) }} {{ rate.currency }} per person
+                                {% elif rate.rate_type == 'per_unit' %}
+                                    <strong>Base Rate:</strong> {{ "%0.2f"|format(rate.base_rate) }} {{ rate.currency }} per unit
+                                {% elif rate.rate_type == 'hourly' %}
+                                    <strong>Base Rate:</strong> {{ "%0.2f"|format(rate.base_rate) }} {{ rate.currency }} per hour
+                                {% elif rate.rate_type == 'daily' %}
+                                    <strong>Base Rate:</strong> {{ "%0.2f"|format(rate.base_rate) }} {{ rate.currency }} per day
+                                {% elif rate.rate_type == 'weekly' %}
+                                    <strong>Base Rate:</strong> {{ "%0.2f"|format(rate.base_rate) }} {{ rate.currency }} per week
+                                {% elif rate.rate_type == 'monthly' %}
+                                    <strong>Base Rate:</strong> {{ "%0.2f"|format(rate.base_rate) }} {{ rate.currency }} per month
+                                {% endif %}
+                                
+                                {% if rate.seasonal_rates %}
+                                    <br><strong>+ Seasonal Adjustments:</strong> Additional charges may apply during specific date ranges.
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if rate.notes %}
+                <div class="alert alert-light mt-3">
+                    <h6>Additional Notes</h6>
+                    <p class="mb-0">{{ rate.notes|nl2br }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Rate Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>Created</h6>
+                    <p class="mb-0">{{ rate.created_at.strftime('%B %d, %Y') }}</p>
+                    <small class="text-muted">by {{ rate.creator.username if rate.creator else 'System' }}</small>
+                </div>
+                
+                {% if rate.updated_at and rate.updated_at != rate.created_at %}
+                <div class="mb-3">
+                    <h6>Last Updated</h6>
+                    <p class="mb-0">{{ rate.updated_at.strftime('%B %d, %Y') }}</p>
+                    <small class="text-muted">
+                        {% if rate.updated_by %}
+                            by {{ rate.updated_by.username }}
+                        {% endif %}
+                    </small>
+                </div>
+                {% endif %}
+                
+                <div class="mb-3">
+                    <h6>Status</h6>
+                    <span class="badge {% if rate.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                        {% if rate.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Supplier</h6>
+                    <p class="mb-0">
+                        <a href="{{ url_for('supplier_management.view_supplier', supplier_id=supplier.id) }}">
+                            {{ supplier.name }}
+                        </a>
+                    </p>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Tip:</strong> This rate will be available for selection when creating or editing quotes.
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('supplier_management.edit_supplier_rate', supplier_id=supplier.id, rate_id=rate.id) }}" 
+                       class="btn btn-primary">
+                        <i class="bi bi-pencil"></i> Edit Rate
+                    </a>
+                    <a href="{{ url_for('supplier_management.list_supplier_rates', supplier_id=supplier.id) }}" 
+                       class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Rates
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="{{ url_for('supplier_management.new_supplier_rate', supplier_id=supplier.id) }}" 
+                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-plus-circle me-2"></i> Create New Rate</span>
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+                <a href="{{ url_for('supplier_management.view_supplier', supplier_id=supplier.id) }}" 
+                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-building me-2"></i> View Supplier</span>
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+                <a href="{{ url_for('supplier_management.list_suppliers') }}" 
+                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-list-ul me-2"></i> All Suppliers</span>
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Enable tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}
